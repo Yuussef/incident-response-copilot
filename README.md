@@ -4,6 +4,10 @@
 
 > This is a portfolio demonstration. It does not connect to production systems, execute remediation, or establish the cause of a real outage. All bundled telemetry is synthetic.
 
+Incident Response Copilot demonstrates how to combine **agent-to-agent delegation, controlled tool access, deterministic analysis, and an optional language model** in an operations workflow. It is designed for engineers who want to explore agent architecture without connecting a prototype to live infrastructure. Select a simulated incident, let the specialist agents inspect their respective evidence sources, then review the ranked hypotheses and trace each conclusion back to fixture IDs and timestamps.
+
+The project emphasizes a practical reliability principle: use code for measurable facts and decision rules, and use an LLM only where natural-language explanation adds value. The investigation remains usable when no model key is configured, and the report clearly marks its leading cause as a hypothesis for a human to verify.
+
 ## What it demonstrates
 
 - Multi-agent design: Logs, Metrics, and Deployments specialists; a coordinator; deterministic Investigator and Reporter stages.
@@ -15,18 +19,112 @@
 
 ## Architecture
 
-```text
-React dashboard ── REST ──> FastAPI coordinator
-                               ├── A2A JSON-RPC ──> Logs specialist ──┐
-                               ├── A2A JSON-RPC ──> Metrics specialist ├──> deterministic investigator/reporter
-                               └── A2A JSON-RPC ──> Deployments specialist ┘
+```mermaid
+flowchart LR
+    subgraph User[User interface]
+        UI[React + TypeScript dashboard]
+    end
 
-MCP host ── stdio ──> MCP server ──> same read-only synthetic data/services
+    subgraph API[FastAPI application]
+        REST[REST API<br/>scenario list + investigation]
+        COORD[Coordinator<br/>parallel A2A calls]
+        INV[Deterministic Investigator<br/>rank evidence-backed hypotheses]
+        REPORT[Deterministic Reporter<br/>timeline + citations + next checks]
+        LLM[Optional LLM explanation<br/>prose only]
+    end
+
+    subgraph Agents[A2A specialist agents]
+        LOGS[Logs Analyst]
+        METRICS[Metrics Analyst]
+        DEPLOY[Deployment Analyst]
+    end
+
+    subgraph Data[Shared synthetic fixture data]
+        FIXTURES[(Scenarios, logs,<br/>metrics, deployments)]
+    end
+
+    subgraph Evaluation[Offline evaluation only]
+        EVAL[(Separate evaluation labels)]
+        RUNNER[Evaluation script]
+    end
+
+    subgraph MCP[MCP tool interface]
+        HOST[Compatible MCP host]
+        SERVER[MCP stdio server<br/>six read-only tools]
+    end
+
+    UI -->|HTTP REST| REST
+    REST --> COORD
+    COORD -->|A2A JSON-RPC| LOGS
+    COORD -->|A2A JSON-RPC| METRICS
+    COORD -->|A2A JSON-RPC| DEPLOY
+    LOGS --> FIXTURES
+    METRICS --> FIXTURES
+    DEPLOY --> FIXTURES
+    LOGS -->|structured findings + evidence IDs| INV
+    METRICS -->|structured findings + evidence IDs| INV
+    DEPLOY -->|structured findings + evidence IDs| INV
+    INV --> REPORT
+    REPORT --> REST
+    REPORT -. optional paraphrase .-> LLM
+    REST -->|report JSON| UI
+    HOST <-->|MCP over stdio| SERVER
+    SERVER --> FIXTURES
+    FIXTURES --> RUNNER
+    EVAL --> RUNNER
+    RUNNER -. scores completed findings .-> INV
 ```
 
-The specialists are independently discoverable A2A agents. Their cards are served at `/a2a/{agent}/.well-known/agent-card.json`; JSON-RPC endpoints are `/a2a/logs`, `/a2a/metrics`, and `/a2a/deployments`. The coordinator sends each agent a scenario ID through the A2A `message/send` method. Each returns an A2A task artifact containing JSON evidence with source IDs and timestamps. The investigator uses explicit rules; it never reads the fixture's hidden `expected_cause` label. The evaluation runner reads that label only to score the result.
+### Investigation flow
 
-MCP is a separate stdio server for tool hosts. It exposes `list_incidents`, `get_incident`, `search_logs`, `summarize_error_signatures`, `inspect_metrics`, and `recent_deployments`. Log search accepts optional ISO-8601 start/end times, service, severity, and text filters. These tools have no write operations. MCP inspection is useful independently; A2A is used for the agent-to-agent delegation flow. After A2A delegation, deterministic Investigator rules rank the candidate causes and Reporter assembles citations, timeline, confidence, and safe follow-up checks.
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as React dashboard
+    participant API as FastAPI coordinator
+    participant A2A as Logs / Metrics / Deployments agents
+    participant Rules as Investigator + Reporter
+    participant Model as Optional LLM
+
+    User->>UI: Select a synthetic incident
+    UI->>API: POST /api/investigations
+    API->>A2A: Send scenario ID to each specialist concurrently
+    A2A-->>API: Structured findings, evidence IDs, timestamps
+    API->>Rules: Rank hypotheses and assemble report
+    opt User enables LLM explanation
+        API->>Model: Explain report facts and cited evidence
+        Model-->>API: Explanatory prose only
+    end
+    API-->>UI: Report, confidence, timeline, evidence, follow-up checks
+    UI-->>User: Display investigation for human review
+```
+
+The specialists are independently discoverable A2A agents. Their cards are served at `/a2a/{agent}/.well-known/agent-card.json`; JSON-RPC endpoints are `/a2a/logs`, `/a2a/metrics`, and `/a2a/deployments`. The coordinator sends each agent a scenario ID through A2A JSON-RPC and gathers the three responses concurrently. Each response contains structured findings with source IDs and timestamps. In this demo the specialists are deterministic Python agents, not separate LLMs; this keeps the example reproducible while demonstrating protocol-based delegation.
+
+The investigator applies explicit rules to the findings and ranks candidate causes. It never reads the fixture's hidden `expected_cause` label. The reporter combines findings into a chronological report with citations, heuristic confidence, and safe follow-up checks. The evaluation runner reads expected labels separately to score the investigation; those labels are not exposed through the API or MCP tools.
+
+MCP is a separate stdio server for tool hosts. It exposes `list_incidents`, `get_incident`, `search_logs`, `summarize_error_signatures`, `inspect_metrics`, and `recent_deployments`. Log search accepts optional ISO-8601 start/end times, service, log level, and text filters. These tools have no write operations. MCP inspection is useful independently; A2A is used for the agent-to-agent delegation flow. After A2A delegation, deterministic Investigator rules rank the candidate causes and Reporter assembles citations, timeline, confidence, and safe follow-up checks.
+
+### Component responsibilities
+
+| Component | Responsibility | Interface / source |
+| --- | --- | --- |
+| React dashboard | Choose a scenario, request an investigation, and present findings, evidence, and the timeline | `frontend/src/` → FastAPI REST |
+| FastAPI application | Serve scenarios, health checks, investigation requests, and A2A routes | `app/main.py` |
+| Coordinator | Call the three specialists concurrently and pass their structured results to the rules engine | `app/orchestrator.py` |
+| Specialist agents | Analyze logs, metrics, or deployment timing; return evidence with stable IDs | `app/agents.py`, A2A JSON-RPC |
+| Investigator and Reporter | Rank hypotheses and assemble a cited, chronological report | `app/investigation.py` |
+| MCP server | Offer six read-only inspection tools to MCP-compatible clients | `app/mcp_server.py`, stdio |
+| Synthetic fixtures | Provide repeatable incident data for the UI, agents, and MCP tools | `data/scenarios.json` |
+| Evaluation set | Score cause, required evidence, provenance, and timeline correctness outside the investigation flow | `data/evaluations/cases.json` |
+
+### Design boundaries
+
+- **Evidence stays inspectable:** report evidence includes stable fixture IDs, timestamps, source types, and excerpts.
+- **Diagnosis stays reproducible:** hypothesis ranking uses explicit rules; confidence is a normalized heuristic rather than a calibrated probability.
+- **LLM scope stays narrow:** the optional model explains the supplied report and cannot replace or edit the deterministic findings.
+- **Tools stay read-only:** neither MCP nor A2A offers production access or remediation actions.
+- **Evaluation stays separate:** expected causes are available to the scoring script, not to the diagnosis agents or public API.
 
 ## Requirements
 
