@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.agents import build_a2a_routes
@@ -70,3 +73,10 @@ async def optional_explanation(report: dict) -> dict:
         return {"available": True, "text": response.output_text}
     except Exception:
         return {"available": False, "text": "LLM unavailable; deterministic report shown."}
+
+
+# In production, serve the Vite build from the same origin as the API. During
+# local development Vite runs separately, so this mount is omitted when absent.
+frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if frontend_dist.is_dir():
+    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")

@@ -175,6 +175,18 @@ The stdio process expects an MCP-compatible host; it is not a browser endpoint. 
 
 Install the optional dependency with `uv sync --extra llm`, copy `.env.example` to `.env`, add your own `OPENAI_API_KEY`, then start the API with `uv run --env-file .env python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000`. In the UI select **Optional LLM explanation**. The API returns the same deterministic report plus an explanation field; if the model is not configured or unavailable, the deterministic report still appears. Never send production telemetry or secrets to a model.
 
+## Deploy to Render
+
+The repository includes a Render Blueprint and a multi-stage `Dockerfile`. The Docker build compiles the React frontend, installs the locked Python dependencies, and packages both into one web service. FastAPI serves the built dashboard and API from the same origin; the A2A Agent Cards advertise Render's public URL while the coordinator calls the agents on the service's local listener.
+
+1. Open [Create a Render Blueprint](https://dashboard.render.com/blueprint/new?repo=https%3A%2F%2Fgithub.com%2FYuussef%2Fincident-response-copilot) and sign in to Render.
+2. Connect the `Yuussef/incident-response-copilot` repository and select its `main` branch.
+3. Review the `incident-response-copilot` service from `render.yaml`, then create the Blueprint.
+4. Wait for the Docker build and deployment to finish. Open the generated `onrender.com` URL; `/api/health` should return `{"status":"ok",...}`.
+5. Run an investigation from the dashboard. The free instance may sleep after inactivity and take a little while to wake on its next request.
+
+The deterministic demo needs no environment secrets. The optional LLM explanation stays unavailable unless you add `OPENAI_API_KEY` (and optionally `OPENAI_MODEL`) in the Render service's environment settings. Pushing commits to `main` triggers a new deployment.
+
 ## Scenarios and expected results
 
 | ID | Synthetic signal | Expected top hypothesis |

@@ -50,7 +50,8 @@ class SpecialistExecutor(AgentExecutor):
 
 
 def build_a2a_routes() -> list[Any]:
-    public_base = os.getenv("PUBLIC_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+    public_base = (os.getenv("PUBLIC_BASE_URL") or os.getenv("RENDER_EXTERNAL_URL")
+                   or f"http://127.0.0.1:{os.getenv('PORT', '8000')}").rstrip("/")
     routes: list[Any] = []
     for key, (name, description) in AGENTS.items():
         path = f"/a2a/{key}"

@@ -35,7 +35,10 @@ async def _call_agent(client: httpx.AsyncClient, base: str, name: str,
 
 
 async def run_coordinated_investigation(scenario_id: str) -> dict[str, Any]:
-    base = os.getenv("PUBLIC_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+    # Call the agents through this container's listener. PUBLIC_BASE_URL is for
+    # externally advertised A2A Agent Cards, not internal service-to-self calls.
+    port = os.getenv("PORT", "8000")
+    base = os.getenv("A2A_INTERNAL_BASE_URL", f"http://127.0.0.1:{port}").rstrip("/")
     async with httpx.AsyncClient() as client:
         results = await __import__("asyncio").gather(*[
             _call_agent(client, base, agent, scenario_id)
