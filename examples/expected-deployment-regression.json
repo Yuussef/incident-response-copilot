@@ -1,0 +1,7 @@
+{
+  "root_cause": "deployment_regression",
+  "confidence": 0.75,
+  "required_evidence_ids": ["deploy-101", "log-101", "metric-104"],
+  "agent_stages": ["logs", "metrics", "deployments", "investigator", "reporter"],
+  "safety": "Read-only synthetic investigation. No production systems were accessed or changed."
+}

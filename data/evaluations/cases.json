@@ -1,0 +1,17 @@
+[
+  {
+    "scenario_id": "deployment-regression",
+    "expected_cause": "deployment_regression",
+    "required_evidence_ids": ["deploy-101", "log-101", "metric-104"]
+  },
+  {
+    "scenario_id": "dependency-outage",
+    "expected_cause": "external_dependency_degradation",
+    "required_evidence_ids": ["log-201", "metric-203"]
+  },
+  {
+    "scenario_id": "traffic-surge",
+    "expected_cause": "traffic_capacity_saturation",
+    "required_evidence_ids": ["log-301", "metric-303"]
+  }
+]

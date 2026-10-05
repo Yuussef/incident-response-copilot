@@ -1,0 +1,65 @@
+[
+  {
+    "id": "deployment-regression",
+    "title": "API errors after deployment",
+    "description": "The checkout API error rate rises immediately after release 2.8.1.",
+    "service": "checkout-api",
+    "start_time": "2026-04-10T10:00:00Z",
+    "logs": [
+      {"id":"log-101","timestamp":"2026-04-10T10:01:04Z","service":"checkout-api","level":"ERROR","message":"TypeError: cannot read property 'currency' from null","trace_id":"trace-a1"},
+      {"id":"log-102","timestamp":"2026-04-10T10:02:11Z","service":"checkout-api","level":"ERROR","message":"TypeError: cannot read property 'currency' from null","trace_id":"trace-a2"},
+      {"id":"log-103","timestamp":"2026-04-10T10:03:18Z","service":"checkout-api","level":"WARN","message":"Retrying request after handler failure","trace_id":"trace-a3"},
+      {"id":"log-104","timestamp":"2026-04-10T09:54:00Z","service":"checkout-api","level":"INFO","message":"Health check passed","trace_id":"trace-a0"}
+    ],
+    "metrics": [
+      {"id":"metric-101","timestamp":"2026-04-10T09:50:00Z","service":"checkout-api","latency_p95_ms":120,"error_rate_pct":0.4,"requests_per_minute":820},
+      {"id":"metric-102","timestamp":"2026-04-10T10:00:00Z","service":"checkout-api","latency_p95_ms":130,"error_rate_pct":0.5,"requests_per_minute":840},
+      {"id":"metric-103","timestamp":"2026-04-10T10:05:00Z","service":"checkout-api","latency_p95_ms":510,"error_rate_pct":18.2,"requests_per_minute":845},
+      {"id":"metric-104","timestamp":"2026-04-10T10:10:00Z","service":"checkout-api","latency_p95_ms":560,"error_rate_pct":21.0,"requests_per_minute":830}
+    ],
+    "deployments": [
+      {"id":"deploy-101","timestamp":"2026-04-10T09:58:00Z","service":"checkout-api","version":"2.8.1","summary":"Refactor currency normalization"},
+      {"id":"deploy-100","timestamp":"2026-04-09T16:00:00Z","service":"checkout-api","version":"2.8.0","summary":"Routine release"}
+    ]
+  },
+  {
+    "id": "dependency-outage",
+    "title": "Payment provider timeouts",
+    "description": "Payment authorization slows down while the external provider is timing out.",
+    "service": "payment-api",
+    "start_time": "2026-04-11T14:00:00Z",
+    "logs": [
+      {"id":"log-201","timestamp":"2026-04-11T14:01:00Z","service":"payment-api","level":"ERROR","message":"Gateway timeout calling provider acquirer-sim","trace_id":"trace-b1"},
+      {"id":"log-202","timestamp":"2026-04-11T14:02:00Z","service":"payment-api","level":"ERROR","message":"Gateway timeout calling provider acquirer-sim","trace_id":"trace-b2"},
+      {"id":"log-203","timestamp":"2026-04-11T14:04:00Z","service":"payment-api","level":"WARN","message":"Circuit breaker opened for acquirer-sim","trace_id":"trace-b3"}
+    ],
+    "metrics": [
+      {"id":"metric-201","timestamp":"2026-04-11T13:50:00Z","service":"payment-api","latency_p95_ms":180,"error_rate_pct":0.3,"requests_per_minute":500},
+      {"id":"metric-202","timestamp":"2026-04-11T14:00:00Z","service":"payment-api","latency_p95_ms":190,"error_rate_pct":0.5,"requests_per_minute":510},
+      {"id":"metric-203","timestamp":"2026-04-11T14:05:00Z","service":"payment-api","latency_p95_ms":2100,"error_rate_pct":12.0,"requests_per_minute":505}
+    ],
+    "deployments": [
+      {"id":"deploy-201","timestamp":"2026-04-11T08:00:00Z","service":"payment-api","version":"5.4.2","summary":"Routine release; no provider changes"}
+    ]
+  },
+  {
+    "id": "traffic-surge",
+    "title": "Search service overloaded",
+    "description": "A sudden traffic increase saturates the search service with no recent deployment.",
+    "service": "search-api",
+    "start_time": "2026-04-12T09:00:00Z",
+    "logs": [
+      {"id":"log-301","timestamp":"2026-04-12T09:02:00Z","service":"search-api","level":"WARN","message":"Worker queue depth above threshold","trace_id":"trace-c1"},
+      {"id":"log-302","timestamp":"2026-04-12T09:04:00Z","service":"search-api","level":"ERROR","message":"Request deadline exceeded while waiting for worker","trace_id":"trace-c2"}
+    ],
+    "metrics": [
+      {"id":"metric-301","timestamp":"2026-04-12T08:50:00Z","service":"search-api","latency_p95_ms":140,"error_rate_pct":0.2,"requests_per_minute":900},
+      {"id":"metric-302","timestamp":"2026-04-12T09:00:00Z","service":"search-api","latency_p95_ms":160,"error_rate_pct":0.3,"requests_per_minute":950},
+      {"id":"metric-303","timestamp":"2026-04-12T09:05:00Z","service":"search-api","latency_p95_ms":980,"error_rate_pct":8.4,"requests_per_minute":4200},
+      {"id":"metric-304","timestamp":"2026-04-12T09:10:00Z","service":"search-api","latency_p95_ms":1200,"error_rate_pct":11.0,"requests_per_minute":4500}
+    ],
+    "deployments": [
+      {"id":"deploy-301","timestamp":"2026-04-08T12:00:00Z","service":"search-api","version":"3.1.0","summary":"Routine release"}
+    ]
+  }
+]
